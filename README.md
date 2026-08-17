@@ -1,50 +1,103 @@
-# Proyectos de Python: Introducción a la Construcción y Análisis de Carteras con Python (Coursera)
+# Portfolio Risk Metrics
 
-Este repositorio contiene los códigos de Python utilizados en el curso "Introducción a la construcción y el análisis de carteras con Python" de Coursera. Los proyectos incluyen análisis de rendimientos, optimización de carteras y simulación de Monte Carlo, entre otros, aplicados en el contexto de la gestión de carteras financieras.
+Librería en Python con métricas estándar de riesgo y retorno para series de
+activos financieros — retorno anualizado, volatilidad, Sharpe ratio,
+drawdown, skewness/kurtosis, y Value at Risk (histórico y ajustado por
+Cornish-Fisher). Los datos se descargan en vivo desde Yahoo Finance.
 
-## 1. Análisis de los Rendimientos
-En esta sección del curso, se cubren los fundamentos de las devoluciones, medidas de riesgo y recompensa, y la estimación del VaR utilizando Python.
+## Instalación
 
-### Temas cubiertos:
-- **Fundamentos de las devoluciones**: Análisis de los rendimientos de activos financieros.
-- **Medidas de riesgo y recompensa**: Cálculo de métricas como la rentabilidad ajustada al riesgo.
-- **Medición de la reducción máxima**: Evaluación de la pérdida máxima en una cartera.
-- **Estimación del VaR**: Valor en riesgo de las carteras.
+```bash
+git clone https://github.com/Gustavo-Campos-Luna/portfolio-risk-metrics.git
+cd portfolio-risk-metrics
+pip install -r requirements.txt
+```
 
-### Código utilizado:
-- **Python**: Implementación de las métricas de rendimiento, VaR y medidas de riesgo.
-- **Librerías**: Pandas, NumPy, Matplotlib para visualización.
+## Uso
 
-#### [Ver el video del curso](https://www.coursera.org/learn/introduction-portfolio-construction-python?specialization=investment-management-python-machine-learning)
+```python
+from risk_metrics import fetch_prices, returns_from_prices, summary_stats
 
----
+prices = fetch_prices(["AAPL", "MSFT", "SPY"], start="2021-01-01")
+returns = returns_from_prices(prices)
 
-## 2. Optimización de Carteras
-En la segunda semana del curso, se profundiza en la optimización de carteras utilizando la frontera eficiente y el uso de la optimización de Markowitz.
+summary_stats(returns, riskfree_rate=0.03)
+```
 
-### Temas cubiertos:
-- **Frontera eficiente**: Cálculo de la frontera eficiente usando la optimización de Markowitz.
-- **Optimización de carteras**: Aplicación de `quadprog` para optimizar una cartera y maximizar el ratio de Sharpe.
-- **Teorema de la separación de fondos**: Aplicación de la línea de mercado de capitales.
+```
+        Annualized Return  Annualized Vol  Sharpe Ratio  ...  Max Drawdown
+Ticker
+AAPL               0.1672          0.2786        0.4780  ...       -0.3336
+MSFT               0.1838          0.2571        0.5807  ...       -0.3715
+SPY                0.1472          0.1711        0.6653  ...       -0.2450
+```
 
-### Código utilizado:
-- **Python**: Implementación de la optimización de carteras con el paquete `cvxopt` y `quadprog`.
-- **Librerías**: NumPy, SciPy, Pandas.
+Más ejemplos (análisis de drawdown, comparación de ETFs sectoriales) en
+[`examples/basic_usage.py`](examples/basic_usage.py):
 
-#### [Ver el video del curso](https://www.coursera.org/learn/introduction-portfolio-construction-python?specialization=investment-management-python-machine-learning)
----
+```bash
+PYTHONPATH=. python examples/basic_usage.py
+```
 
-## 3. Simulación de Monte Carlo y Estrategias de CPPI
-Esta sección cubre la simulación de rendimientos utilizando paseos aleatorios y Monte Carlo, así como estrategias de CPPI.
+## Métricas incluidas
 
-### Temas cubiertos:
-- **Simulación de rendimientos**: Utilización de simulación Monte Carlo para prever los rendimientos futuros.
-- **Estrategias CPPI**: Implementación de estrategias de protección de la cartera (Constant Proportion Portfolio Insurance).
-- **Análisis de la diversificación**: Evaluación de los límites de la diversificación en una cartera.
+| Función | Qué calcula |
+|---|---|
+| `annualized_return` | CAGR implícito de la serie de retornos |
+| `annualized_vol` | Desviación estándar anualizada |
+| `sharpe_ratio` | Retorno en exceso sobre la tasa libre de riesgo, por unidad de volatilidad |
+| `drawdown` / `max_drawdown` | Caída porcentual desde el máximo histórico (peak-to-trough) |
+| `skewness` / `kurtosis` | Momentos 3° y 4° de la distribución de retornos |
+| `semideviation` | Desviación estándar solo de los retornos bajo la media (riesgo a la baja) |
+| `var_historic` / `cvar_historic` | VaR y Expected Shortfall al percentil elegido |
+| `var_cornish_fisher` | VaR gaussiano ajustado por skewness/kurtosis (Cornish & Fisher, 1938) |
 
-### Código utilizado:
-- **Python**: Implementación de simulaciones de Monte Carlo y estrategias CPPI.
-- **Librerías**: NumPy, Matplotlib, pandas.
+Fórmulas y referencias completas en los docstrings de
+[`risk_metrics/metrics.py`](risk_metrics/metrics.py).
 
-#### [Ver el video del curso](https://www.coursera.org/learn/introduction-portfolio-construction-python?specialization=investment-management-python-machine-learning)
----
+## Estructura
+
+```
+risk_metrics/
+  data.py       fetch_prices() — descarga vía yfinance
+  metrics.py    funciones de riesgo/retorno (ver tabla arriba)
+tests/
+  test_metrics.py   21 tests: valores conocidos y casos borde
+examples/
+  basic_usage.py
+```
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+ruff check .
+```
+
+## Limitaciones
+
+- Los retornos se tratan como observaciones independientes; no hay ajuste
+  por autocorrelación serial.
+- `var_cornish_fisher` puede producir resultados poco intuitivos con
+  skewness/kurtosis extremos — es una aproximación, no un modelo exacto de
+  la cola de la distribución.
+- Sin manejo de dividendos más allá del ajuste que ya aplica `yfinance`
+  (`auto_adjust=True`).
+- Depende de la disponibilidad de datos en Yahoo Finance.
+
+## Notas de desarrollo
+
+Los conceptos (retornos ajustados al riesgo, VaR histórico y
+Cornish-Fisher, drawdown) se aprendieron en el curso "Introduction to
+Portfolio Construction and Analysis with Python" (Coursera/EDHEC). El
+código de este repositorio es una reconstrucción propia con asistencia de
+IA: usa datos reales de Yahoo Finance en vez de los CSV estáticos del
+curso, está organizado como paquete con tests (21 casos, incluyendo bordes
+como volatilidad cero y series vacías), y no reutiliza el código entregado
+en el curso. Las fórmulas mismas son estándar de la literatura de gestión
+de riesgo, no exclusivas de ningún curso.
+
+## Licencia
+
+[MIT](LICENSE)
